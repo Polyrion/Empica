@@ -47,7 +47,6 @@ window.TasksTableComponent = (function (window) {
          * @param element
          */
         function render(element) {
-            console.log(getTableElement());
             element.innerHTML = '';
             element.append(getTableElement());
         }
@@ -57,19 +56,18 @@ window.TasksTableComponent = (function (window) {
          * @returns {HTMLTableElement}
          */
         function getTableElement() {
-            var tableEl = document.createElement('table');
+            const tableEl = document.createElement('table');
             tableEl.setAttribute('class', 'Tasks');
-            for (var i = 0; i < self.tasks.length; i++) {
-                var task = self.tasks[i];
-                if (i === 0) {
+        
+            self.tasks.forEach((task, index) => {
+                if (index === 0) {
                     tableEl.append(getHeaderElement(task));
                 }
-                var line = getLineElement(task);
+                const line = getLineElement(task);
                 tableEl.append(line);
-                line.addEventListener('click', function(){
-                   alert(task.TxtCivilName);
-                });
-            }
+                line.addEventListener('click', () => alert(task.TxtCivilName));
+            });
+        
             tableEl.append(getFooterElement(self.aggregatedValues));
             return tableEl;
         }
@@ -118,17 +116,15 @@ window.TasksTableComponent = (function (window) {
          * @returns {HTMLTableSectionElement}
          */
         function getFooterElement(aggregatedLine) {
-            var columns = [];
-            for (var i = 0; i < self.columns.length; i++) {
-                var col = self.columns[i];
-                if(aggregatedLine.hasOwnProperty(col.property)){
-                    columns.push(`<td>${col.aggregateLabel} ${aggregatedLine[col.property]}</td>`);
-                } else {
-                    columns.push(`<td></td>`);
-                }
-            }
-            var tfoot = document.createElement('tr');
-            tfoot.innerHTML =`<tfoot><tr>${columns.join('')}</tr></tfoot>`;
+            const columns = self.columns.map(col => {
+                const value = aggregatedLine[col.property];
+                return aggregatedLine.hasOwnProperty(col.property)
+                    ? `<td>${col.aggregateLabel} ${value}</td>`
+                    : `<td></td>`
+            });
+
+            const tfoot = document.createElement('tfoot');
+            tfoot.innerHTML = `<tr>${columns.join('')}</tr>`;
             return tfoot;
         }
 
@@ -144,21 +140,29 @@ window.TasksTableComponent = (function (window) {
          * @returns {{}}
          */
         function getAggregatedValues(tasks) {
-            var aggregatedValues = {};
-            for(var i = 0; i < tasks.length; i++) {
-                var task = tasks[i];
-                for(var j = 0; j < self.columns.length; j++) {
-                    var col = self.columns[j];
-                    if(col.hasOwnProperty('aggregateFn')){
-                        if(!aggregatedValues.hasOwnProperty(col.property)){
-                            aggregatedValues[col.property] = 0;
+            const aggregatedValues = {};
+        
+            tasks.forEach(task => {
+                self.columns.forEach(col => {
+                    if (col.hasOwnProperty('aggregateFn')) {
+                        const property = col.property;
+                        const value = col.aggregateFn(task);
+                        
+                        if (typeof value === 'number' && !isNaN(value)) {
+                            if (!(property in aggregatedValues)) {
+                                aggregatedValues[property] = 0;
+                            }
+                            
+                            aggregatedValues[property] += value;
                         }
-                        aggregatedValues[col.property] += col.aggregateFn(task);
                     }
-                }
-            }
+                });
+            });
+        
             return aggregatedValues;
         }
+        
+        
     };
 
 })(window)
