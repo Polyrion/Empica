@@ -1,11 +1,31 @@
 (function (window, document) {
-
-    init();
     var tasksTable;
     var companiesList = [];
+    
+    const loadingStartEvent = new Event('loadingStart');
+    const loadingEndEvent = new Event('loadingEnd');
+    const loadingErrorEvent = new Event('loadingError');
+    const dataTable = document.getElementById('dataTable');
+
+    init();
+
+    function showLoadingMessage() {
+        dataTable.innerHTML = 'Loading...';
+    }
+
+    function hideLoadingMessage() {
+        dataTable.innerHTML = '';
+    }
+
+    function showErrorMessage() {
+        dataTable.innerHTML = 'An error occured';
+    }
 
     function init() {
         tasksTable = new TasksTableComponent();
+        document.addEventListener('loadingStart', showLoadingMessage);
+        document.addEventListener('loadingEnd', hideLoadingMessage);
+        document.addEventListener('loadingError', showErrorMessage);
 
         document.getElementById('refreshBtn').addEventListener('click', function () {
             updateTable();
@@ -15,23 +35,32 @@
         updateTable();
     }
 
-    function updateTable() {
-        var isLoading = true;
-        document.getElementById('dataTable').innerHTML = 'Loading...';
-
-        return dataService.getTranslations().then(onTranslationsReady);
-
-        function onTranslationsReady(translations) {
-            if(!translations){
-                translations = {types : {}};
-            }
-            getTasks(translations.types).then((tasks) => {
-                tasksTable.setTasks(tasks);
-                isLoading = false;
-                tasksTable.render(document.getElementById('dataTable'));
-            });
+    async function onTranslationsReady(translations = { types: {} }) {
+        const tasks = await getTasks(translations.types);
+        tasks ? onTaskSuccess(tasks) : onTaskError();
+    }
+    
+    async function updateTable() {
+        document.dispatchEvent(loadingStartEvent);
+    
+        try {
+            const data = await dataService.getTranslations();
+            data ? onTranslationsReady(data) : onTaskError();
+        } catch (error) {
+            console.error('An error occurred while fetching translations:', error);
+            onTaskError();
         }
     }
+    
+    function onTaskSuccess(tasks) {
+        tasksTable.setTasks(tasks);
+        tasksTable.render(dataTable);
+    }
+    
+    function onTaskError() {
+        document.dispatchEvent(loadingErrorEvent);
+    }
+    
 
     function updateCompanies() {
         return dataService.getCompanies().then(function (companies) {
