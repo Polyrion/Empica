@@ -68,26 +68,30 @@
         });
     }
 
-    function getTasks(typeTranslations) {
-        return dataService.getTasks().then((tasks) => {
-            var tasks = tasks.map(task => {
-                return getTaskItemFromXml(task, typeTranslations)
-            });
-            return tasks;
-        });
-
-        function getTaskItemFromXml(task, typeTranslations) {
-            task = convertXmlToJson(task);
-            var taskItem = {};
-            for (var i in task.Item) {
-                taskItem[i] = task.Item[i]['#text'];
-            }
-            taskItem.NumDaysRequested = parseInt(taskItem.NumDaysRequested);
-            taskItem.TxtCompanyName = getCompanyFromId(taskItem.NumCompanyId).name;
-            taskItem.TxtType = typeTranslations[taskItem.TxtType] || taskItem.TxtType;
-            return taskItem;
+    async function getTasks(typeTranslations) {
+        try {
+            const tasks = await dataService.getTasks();
+            return tasks ? tasks.map(task => getTaskItemFromXml(task, typeTranslations)) : onTaskError();
+        } catch (error) {
+            console.error('An error occurred while fetching tasks:', error);
+            onTaskError();
         }
     }
+    
+    function getTaskItemFromXml(task, typeTranslations) {
+        const { Item } = convertXmlToJson(task);
+        const taskItem = {};
+    
+        for (const key in Item) {
+            taskItem[key] = Item[key]['#text'];
+        }
+    
+        taskItem.NumDaysRequested = parseInt(taskItem.NumDaysRequested);
+        taskItem.TxtCompanyName = getCompanyFromId(taskItem.NumCompanyId).name;
+        taskItem.TxtType = typeTranslations[taskItem.TxtType] || taskItem.TxtType;
+    
+        return taskItem;
+    }    
 
     /**
      * Return a company from its id
